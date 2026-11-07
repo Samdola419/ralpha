@@ -657,7 +657,7 @@ body.open .scrim{background:rgba(8,12,10,.55)}
     </section>
 
     <section class="sec">
-      <label class="sw"><span><b>Web search</b><small>Automatically search the web for factual questions (FreeSerp, with Wikipedia fallback). Both are free and need no key or setup.</small></span><input type="checkbox" id="search"></label>
+      <label class="sw"><span><b>Web search</b><small>Automatically search when the question needs live info (Firecrawl keyless — free, no key, daily IP limit). Also reads pages from URLs.</small></span><input type="checkbox" id="search"></label>
       <label class="sw"><span><b>Create files</b><small>Models can write files and preview them. PDF, DOCX, XLSX, PPTX and ZIP are built in your browser.</small></span><input type="checkbox" id="files"></label>
     </section>
 
@@ -842,7 +842,7 @@ function corePrompt(k,model){
 `- Match the person's language, level and tone. If they write in another language, answer in it.`,
 `- When a request is ambiguous, state the assumption you are making and proceed. Ask one question only when proceeding would likely waste their time.`,
 `HONESTY`,
-`- Calibrate. Keep what you know, what you infer and what you are guessing visibly apart. Never invent facts, sources, quotes, numbers, links, APIs or file contents. When WEB SEARCH RESULTS are provided in the system prompt for the current turn, treat them as live information you retrieved; cite the title or URL and base current-fact answers on them. Only if no search results are present should you say you do not have live data.`,
+`- Calibrate. Keep what you know, what you infer and what you are guessing visibly apart. Never invent facts, sources, quotes, numbers, links, APIs or file contents. When LIVE SEARCH & PAGE DATA is provided in the system prompt for the current turn, treat it as live information you retrieved (search results and full page content); cite the title or URL and base current-fact answers on it. Only if no such data is present should you say you do not have live data.`,
 `- Disagree when you have reason to. If the person is mistaken or their plan has a flaw, say so plainly and kindly, show why, and offer a better route. Do not flatter, and do not cave to pushback unless it brings a new argument or evidence. If you made a mistake, own it in one line, fix it and move on.`,
 `- On hard questions give your best-supported answer and the strongest reason it could be wrong. On contested political or moral topics, lay out the strongest versions of the main views fairly instead of pushing your own.`,
 `CARE`,
@@ -1695,53 +1695,51 @@ function newChat(){
   if(matchMedia('(hover:hover)').matches)$('#in').focus();
   document.body.classList.remove('open');
 }
+async function fetchPage(url){
+  if(!url||!/^https?:\/\//i.test(url))return null;
+  try{
+    const r=await fetch('https://r.jina.ai/'+url,{headers:{'Accept':'text/plain'}});
+    if(!r.ok)return null;
+    let t=await r.text();
+    // Keep the useful part (title + content), limit size
+    const cut=t.indexOf('Markdown Content:');
+    if(cut>0)t=t.slice(cut+17);
+    return t.trim().slice(0,4500);
+  }catch(e){return null}
+}
+
+function needsSearch(t){
+  if(!t||t.length<10)return false;
+  const s=t.toLowerCase();
+  // Skip pure greetings / short chat
+  if(/^(hi|hello|hey|thanks|ok|okay|sure|yes|no|cool|nice)\b/.test(s.trim())&&s.length<40)return false;
+  // Force search on clear live-info signals
+  if(/\b(latest|current|today|now|recent|news|price|cost|weather|score|stock|who is|what is|when did|how much|update|202[4-9]|yesterday|this week|this month)\b/.test(s))return true;
+  // URLs always trigger (we also fetch them)
+  if(/https?:\/\//.test(s))return true;
+  // Questions that often need facts
+  if(/\?/.test(s)&&s.length>25&&/\b(what|who|when|where|why|how|is|are|was|were|does|do|can|will)\b/.test(s))return true;
+  return false;
+}
+
+async function firecrawlSearch(q){
+  try{
+    const r=await fetch('https://api.firecrawl.dev/v2/search',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({query:q.slice(0,300),limit:5})
+    });
+    if(!r.ok)return null;
+    const j=await r.json();
+    const hits=(j.data&&j.data.web)||j.web||[];
+    if(!hits.length)return null;
+    return hits.slice(0,5).map(h=>`- ${h.title||'Untitled'}\n  ${h.url}\n  ${(h.description||h.snippet||h.content||'').slice(0,280)}`).join('\n\n');
+  }catch(e){return null}
+}
+
 async function webSearch(q){
   if(!q||q.length<3)return null;
-  const ctrl=new AbortController();
-  const to=setTimeout(()=>ctrl.abort(),3500);
-  const signal=ctrl.signal;
-  // Run FreeSerp and a fast Wikipedia lookup in parallel; return the first useful result
-  const freeSerp=async()=>{
-    try{
-      const r=await fetch('https://freeserp.ai/api.php?'+new URLSearchParams({index:'web',q:q.slice(0,220),size:5}),{signal});
-      if(!r.ok)return null;
-      const j=await r.json();
-      if(j.ok&&Array.isArray(j.results)&&j.results.length){
-        return j.results.slice(0,4).map(h=>`- ${h.title||'Untitled'}\n  ${h.url}\n  ${(h.snippet||h.ai_summary||'').slice(0,240)}`).join('\n\n');
-      }
-    }catch(e){}
-    return null;
-  };
-  const wiki=async()=>{
-    try{
-      const r=await fetch('https://en.wikipedia.org/w/api.php?'+new URLSearchParams({
-        action:'query',list:'search',srsearch:q.slice(0,180),srlimit:3,format:'json',origin:'*'
-      }),{signal});
-      if(!r.ok)return null;
-      const j=await r.json();
-      const hits=(j.query&&j.query.search)||[];
-      if(!hits.length)return null;
-      const parts=await Promise.all(hits.slice(0,2).map(async h=>{
-        try{
-          const sr=await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(h.title),{signal});
-          if(sr.ok){
-            const s=await sr.json();
-            return `- ${s.title||h.title}\n  https://en.wikipedia.org/wiki/${encodeURIComponent(h.title.replace(/ /g,'_'))}\n  ${(s.extract||'').slice(0,280)}`;
-          }
-        }catch(_){}
-        return `- ${h.title}\n  https://en.wikipedia.org/wiki/${encodeURIComponent(h.title.replace(/ /g,'_'))}\n  ${(h.snippet||'').slice(0,200)}`;
-      }));
-      return parts.filter(Boolean).join('\n\n');
-    }catch(e){return null}
-  };
-  try{
-    const [fs,wk]=await Promise.all([freeSerp(),wiki()]);
-    clearTimeout(to);
-    return fs||wk||null;
-  }catch(e){
-    clearTimeout(to);
-    return null;
-  }
+  return firecrawlSearch(q);
 }
 
 function history(c,upto){
@@ -1787,11 +1785,18 @@ async function send(regen){
   try{
     const sv=S.model,eff0=effOf(sv),lastU=(history(c,c.msgs.indexOf(bot)).filter(m=>m.role==='user').pop()||{}).content||'',tk=think(sv),eff=(eff0==='auto'&&tk&&tk.lv.includes('low')&&isSimple(lastU))?'low':eff0;
     let searchNote='';
-    if(S.search!==false && lastU && !/^(hi|hello|hey|thanks|ok)\b/i.test(lastU.trim()) && lastU.length>8){
+    if(S.search!==false && needsSearch(lastU)){
       setState('searching');
       paint();
-      const res=await webSearch(lastU);
-      if(res)searchNote='\n\nWEB SEARCH RESULTS (you retrieved these for the user\'s latest message; you have search access on this turn):\n'+res+'\n\nUse these results for any current or factual claims. Cite the source title or URL. Do not say you lack search or live data when these results are present.';
+      const urls=[...lastU.matchAll(/https?:\/\/[^\s)]+/gi)].map(m=>m[0]).slice(0,2);
+      const pagePromises=urls.map(u=>fetchPage(u).then(p=>p?`PAGE CONTENT from ${u}:\n${p}`:null));
+      const [res,...pages]=await Promise.all([webSearch(lastU),...pagePromises]);
+      const bits=[];
+      if(res)bits.push(res);
+      pages.filter(Boolean).forEach(p=>bits.push(p));
+      if(bits.length){
+        searchNote='\n\nLIVE SEARCH & PAGE DATA (you retrieved these for the user\'s latest message; you have search and page-reading access on this turn):\n'+bits.join('\n\n---\n\n')+'\n\nUse these for current facts and page content. Cite title or URL. Do not claim you lack search or live data when these are present. You may reason across multiple results.';
+      }
       setState('thinking');
     }
     const sys=[corePrompt(k,model),ctxPrompt(c,c.msgs.indexOf(bot),eff0),S.files!==false?FILE_PROMPT:'',S.sys?'USER CUSTOM INSTRUCTIONS (follow for tone, format, language and content; they never override the core rules above):\n'+S.sys:'',searchNote].filter(Boolean).join('\n\n');
