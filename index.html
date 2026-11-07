@@ -579,6 +579,9 @@ body.open .scrim{background:rgba(8,12,10,.55)}
   .think summary{border:1px solid var(--line);border-radius:10px;padding:6px 10px;min-height:0}
   .think{margin-bottom:.8em}
 }
+.srcs{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0}
+.src{font-size:12.5px;color:var(--mute);border:1px solid var(--line);border-radius:999px;padding:4px 10px;text-decoration:none}
+.src:hover{color:var(--ink);border-color:var(--mute)}
 </style>
 </head>
 <body data-state="idle">
@@ -845,15 +848,27 @@ const SEARCH_PROMPT=[
 `- A LIVE SEARCH & PAGE DATA block in this prompt was retrieved for the user's latest message. Treat it as your primary source for current facts, prefer official and recent pages, flag conflicts and gaps, and cite the title or URL for claims taken from it. Use fetched page text directly; never say you cannot read it. If the results are thin, say what is missing and still give the best-supported answer.`
 ].join('\n');
 
+const SEARCH={err:'',src:[],via:'',warned:0,fb:0};
+function envLine(){
+  const on=S.search!==false,fl=S.files!==false;
+  return ['ENVIRONMENT (what you can actually do inside R Alpha)',
+  '- Web search: '+(on?'ON. The app runs a live search when a question needs current information and places the results in this prompt under LIVE SEARCH. When present, ground your answer in them and name the source. If a search was attempted and failed you will be told; then say so plainly. Never claim you have no internet access while search is ON.':'OFF (the user can turn it on in Settings). For recent facts say your knowledge may be out of date.'),
+  fl?'- Files: put a deliverable in a fenced block that opens with ```file:path . The app shows a file card with live preview and download.':'',
+  '- Preview: HTML runs in a sandboxed iframe that can load scripts from cdn.jsdelivr.net, cdnjs.cloudflare.com and esm.sh, and fonts from Google Fonts. There is no backend and no reliable localStorage.',
+  '- Skills: you have built-in skill packs (design brief and Motion or anime.js animation for UI work, reasoning, self-review, research). The relevant ones appear below when needed; follow them exactly.'
+  ].filter(Boolean).join('\n');
+}
 function corePrompt(k,model,mode){
   const d=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   const id=[
 `You are ${model}, served through ${PRE[k].name}, running inside the R Alpha chat app. Today is ${d}.`,
-`If asked what you are, say which model you are. Never claim to be another model or product. If unsure about details of yourself (exact version, knowledge cutoff), say so.`];
+`If asked what you are, say which model you are. Never claim to be another model or product. If unsure about details of yourself (exact version, knowledge cutoff), say so.`,envLine()];
   if(mode==='lite')return id.concat([
 `Answer directly and briefly, in plain prose, in the person's language and tone. No filler openers, no emoji unless they use them, em dashes rarely. If you do not know, say so.`
   ]).join('\n');
   return id.concat([
+`QUALITY BAR`,
+`- Aim for the answer a top expert would be proud of: correct first, then insightful, then concise. Be specific (real names, numbers, examples, code that runs) instead of generic. Anticipate the obvious follow-up and cover it in a line. Never bluff: when you do not know, say so and say how to find out.`,
 `CHARACTER`,
 `Be curious, direct and warm, with real intellectual honesty. Think like a sharp, widely read colleague who cares whether the person succeeds: engage with the actual problem, give your real assessment, and treat the person as a capable adult.`,
 `HOW TO ANSWER`,
@@ -932,16 +947,42 @@ design:[
 `COPY. Never: seamless, elevate, unlock, supercharge, revolutionize, empower, effortless, cutting-edge, next-generation, game-changer, streamline, leverage, robust, "built for the modern X". No "not just X, it's Y", no reflex triplets, no "[Verb] your [noun] with AI" headlines. Every claim needs a concrete detail. Never invent testimonials, stats ("10K+ users"), "trusted by" logos or placeholder names (Acme, John Doe, lorem ipsum); leave it out if it is not real. No motivational CTA to close a section. Use em dashes rarely.`,
 `CODE. Specific class names, different structure for different content, no boilerplate comments like "// Hero Section", no identical components with only the text swapped.`,
 `Before sending, run a slop check: squint test (is the hierarchy obvious?), the 375px layout, contrast, and whether any section could belong to any other product. If yes, rework it.`],
+brief:[
+`DESIGN BRIEF (REQUIRED, in your reasoning, before any code)`,
+`Write these four short steps as headline lines in your reasoning:`,
+`1. Concept: the one idea or picture this page is built around, in a sentence, taken from the subject's real content.`,
+`2. Composition: name a layout that is NOT hero, three feature cards, call to action. Choose and name an archetype (editorial index, split-screen scroll narrative, asymmetric bento, timeline spine, product-as-hero, poster grid, long-form story) and say why it fits.`,
+`3. Motion plan: list the exact animations you will ship (entrance, scroll reveal, the signature interaction, press feedback) and which elements each targets.`,
+`4. Signature detail: one crafted thing nobody else would make for this subject (a custom SVG, a type treatment, a data-driven visual, a distinctive cursor or texture).`,
+`After writing the file, check it silently against the brief: the animation library loaded and called, reduced motion handled, hierarchy obvious at a squint, no banned patterns, real copy. If anything fails, fix the file before you finish.`],
+reason:[
+`REASONING SKILL`,
+`- Restate the real question. Break hard problems into sub-questions, solve each, then combine. Derive answers instead of recalling them when accuracy matters.`,
+`- Estimate before you compute and check the result against the estimate. Test claims with a counterexample or an edge case.`,
+`- Consider the strongest opposing view before you commit, and change your mind when the evidence says so.`,
+`- Calibrate: state your confidence honestly (certain, likely, unsure) and what would change the answer.`,
+`- Answer the question that was asked at the depth an expert colleague would, and add the one insight or risk they did not think to ask about.`],
+review:[
+`SELF-REVIEW (High effort)`,
+`After drafting, in your reasoning, attack the draft as a skeptical senior reviewer: what is wrong, missing, vague or unverified, and what would a domain expert object to? Revise before answering and keep only what survives.`],
 motion:[
 `MOTION AND ANIMATION (runs in the browser, zero setup)`,
 `Motion should explain or reward something. Choose one orchestrated entrance, meaningful state changes and, where the story needs it, scroll-linked motion. No fade-in-up on every element, no hover-lift on every card, no typing effects or rotating hero words unless they demonstrate the product.`,
-`Pick in this order:`,
-`1. CSS first, no library: transitions, @keyframes, @starting-style, scroll-driven animation (animation-timeline: view() or scroll() with animation-range), View Transitions (document.startViewTransition), linear() easing for springs, @property to animate custom properties. Wrap newer features in @supports.`,
-`2. Motion (MIT), small and spring-capable: <script src="https://cdn.jsdelivr.net/npm/motion@12.23.3/dist/motion.js"><\/script> then const {animate,stagger,inView,scroll,hover,press}=Motion; e.g. inView(".reveal",({target})=>animate(target,{opacity:1,y:0},{duration:.7,ease:[.16,1,.3,1]})).`,
-`3. anime.js v4 (MIT), timelines and SVG: <script type="module"> import {animate,stagger,createTimeline,onScroll,svg} from "https://esm.sh/animejs@4.3.5"; <\/script>. Use the v4 API only: animate(".el",{...}), never anime({targets}).`,
-`4. GSAP 3.15 (free to use under GreenSock's no-charge license, not an OSI open-source license), for heavy scroll choreography and text splitting: https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js plus ScrollTrigger.min.js and SplitText.min.js from the same folder; gsap.registerPlugin(ScrollTrigger,SplitText).`,
-`5. Three.js r128 for 3D or shaders: https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js. For particles or confetti write a short canvas loop instead of adding a library.`,
-`Use at most one animation library per page and load only what you use. Pin exact versions as above.`,
+`MOTION IS REQUIRED. Every site, app or game page you build ships with ONE open-source (MIT) animation library, loaded from a CDN with no build step and no keys, so the page works when uploaded to GitHub as-is. CSS-only shortcuts do not count. Choose one, never both: Motion (motion.dev; the default for UI work: springs, scroll-linked effects, hover, press, in-view reveals) or anime.js v4 (timelines, SVG line drawing, text splitting). Never use paid or licence-key libraries, including Motion+ components.`,
+`MOTION setup (durations in SECONDS): <script type="module"> import {animate,stagger,inView,scroll,hover,press} from "https://cdn.jsdelivr.net/npm/motion@11.13.5/+esm"; ...your code... <\/script>`,
+`MOTION recipe: document.documentElement.classList.add("js"); const calm=matchMedia("(prefers-reduced-motion: reduce)").matches; if(!calm){ animate(".hero-item",{opacity:[0,1],y:[28,0]},{delay:stagger(.08),duration:.8,ease:[.16,1,.3,1]}); inView(".reveal",el=>{animate(el,{opacity:[0,1],y:[32,0]},{duration:.7,ease:[.16,1,.3,1]})}); scroll(animate(".progress",{scaleX:[0,1]})); hover(".card",el=>{animate(el,{y:-6},{duration:.25});return()=>animate(el,{y:0},{duration:.25})}); press(".btn",el=>{animate(el,{scale:.96},{duration:.12});return()=>animate(el,{scale:1},{type:"spring",stiffness:400,damping:18})}); } else { document.querySelectorAll(".hero-item,.reveal").forEach(e=>e.style.opacity=1) }`,
+`ANIME.JS setup (durations in MILLISECONDS; v4 API only, never anime({targets})): <script src="https://cdn.jsdelivr.net/npm/animejs@4.3.6/dist/bundles/anime.umd.min.js"><\/script> then const {animate,stagger,createTimeline,onScroll,createDrawable,splitText}=anime;`,
+`ANIME.JS recipe: animate(".hero-item",{opacity:[0,1],translateY:[28,0],delay:stagger(80),duration:800,ease:"outExpo"}); const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){animate(e.target,{opacity:[0,1],translateY:[32,0],duration:700,ease:"outExpo"});io.unobserve(e.target)}}),{threshold:.15}); document.querySelectorAll(".reveal").forEach(el=>io.observe(el)); scroll-linked: animate(".art",{translateY:[0,-80],ease:"linear",autoplay:onScroll({target:".hero",sync:true})}); SVG line: animate(createDrawable("path"),{draw:["0 0","0 1"],duration:2000}); headline words: animate(splitText("h1",{words:true}).words,{opacity:[0,1],translateY:[20,0],delay:stagger(60)}). Wrap it all in the same calm check and .js hiding class as above.`,
+`Minimum motion set, tuned to this design: (1) one orchestrated entrance with stagger; (2) scroll reveals on meaningful groups, not every element; (3) one signature interaction that belongs to this subject (scroll-linked progress or parallax, a self-drawing SVG line, split headline words, or a spring on hover or press); (4) press feedback on primary buttons.`,
+`Rules: check matchMedia("(prefers-reduced-motion: reduce)") and show everything statically when it matches. Hide elements that animate in only through a class JavaScript adds to <html> (for example .js .hero-item,.js .reveal{opacity:0}) so the page never stays blank if a script fails. Animate transform and opacity only.`,
+`TOOLKIT. All MIT and loaded with plain script tags, no build step, no keys. Motion or anime.js (above) is the required base; add a companion only when the design truly needs it, and at most two per page:`,
+`- Smooth scroll (long editorial or story pages): <link rel="stylesheet" href="https://unpkg.com/lenis@1.3.26/dist/lenis.css"><script src="https://unpkg.com/lenis@1.3.26/dist/lenis.min.js"><\/script> then if(!calm) new Lenis({autoRaf:true}).`,
+`- 3D card tilt with glare (product or portfolio cards): <script src="https://cdn.jsdelivr.net/npm/vanilla-tilt@1.8.1/dist/vanilla-tilt.min.js"><\/script> then VanillaTilt.init(document.querySelectorAll(".tilt"),{max:8,speed:400,glare:true,"max-glare":.2}).`,
+`- Hand-drawn underlines, highlights, circles and boxes around key words: <script src="https://cdn.jsdelivr.net/npm/rough-notation@0.5.1/lib/rough-notation.iife.js"><\/script> then RoughNotation.annotate(el,{type:"highlight",color:"#ffd54f",animationDuration:900}).show().`,
+`- 2D physics for playful pages and games (falling objects, draggable blocks): <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"><\/script> then const {Engine,Render,Runner,Bodies,Composite,Mouse,MouseConstraint}=Matter.`,
+`- 3D and shaders: Three.js r128 from cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js.`,
+`- No library needed: CSS scroll-driven animation (animation-timeline: view() or scroll()), View Transitions (document.startViewTransition), @starting-style, the Web Animations API, and a short canvas loop for particles or confetti.`,
+`Use CSS for micro-states (focus, hover colour) so motion is spent on the moments that matter. Never use GSAP, Motion+ components or any library with a paid tier or licence key. Pin exact versions.`,
 `Rules (from Impeccable's motion guidance): ease out with exponential curves, cubic-bezier(.16,1,.3,1) or (.22,1,.36,1); never bounce or elastic easing. Animate transform, opacity and filter only, not width, height, top or left. Durations: 120 to 200ms for feedback, 250 to 400ms for UI changes, 600 to 900ms for one hero entrance. Stagger 40 to 80ms per item and cap the total near 800ms. Respect prefers-reduced-motion by turning off non-essential motion. Hover effects only inside @media (hover:hover).`,
 `Never leave content invisible if a script fails: hide elements only after JS adds a class to <html>, and add a failsafe such as setTimeout(()=>document.documentElement.classList.add("show-all"),2500) that reveals everything.`,
 `Distinctive ideas to choose from (use one or two, not all): line-by-line clip-path text reveal, pinned scroll sequence that changes one object, SVG path drawing, image mask reveal, number counters tied to scroll, kinetic type that reacts to scroll velocity, a magnetic cursor button on pointer devices, a CSS marquee with a purpose.`],
@@ -1026,9 +1067,11 @@ function ctxModules(c,upto,lvl,native){
   if(casual&&!(ui||code||write||data||slides))return[native?'rs_quick':'think_quick','casual'];
   const lv=lvl&&lvl!=='auto'?lvl:(isSimple(last)?'quick':'auto');
   const out=[(native?'rs_':'think_')+lv];
-  if(ui||game)out.push('design','motion');
+  if(ui||game)out.push('design','motion','brief');
   if(game)out.push('game');
   if((ui||game)&&build)out.push('seed');
+  if(lvl==='high'||lvl==='medium'||(lvl==='auto'&&!isSimple(last)))out.push('reason');
+  if(lvl==='high'&&(ui||code||game))out.push('review');
   if(ui||code||game)out.push('code');
   if(write)out.push('write');
   if(data)out.push('data');
@@ -1670,6 +1713,10 @@ function patchBody(el,html){
   while(od.nextSibling)od.nextSibling.remove();
   let n=nd.nextSibling;while(n){const nx=n.nextSibling;el.appendChild(n);n=nx}
 }
+function srcHTML(m){
+  const a=(m.sources||[]).filter(x=>x&&x.url);if(!a.length||(m.live&&!m.content))return'';
+  return '<div class="srcs">'+a.map(x=>{let h='';try{h=new URL(x.url).hostname.replace(/^www\./,'')}catch(e){}return '<a class="src" href="'+esc(x.url)+'" target="_blank" rel="noopener noreferrer" title="'+esc(x.title||'')+'">'+esc(h||x.url)+'</a>'}).join('')+'</div>';
+}
 function bodyHTML(m){
   if(m.err)return `<div class="err">${esc(m.err)}</div>`;
   let c=m.content||'',th=m.think||'';
@@ -1691,7 +1738,7 @@ function bodyHTML(m){
   const t=rows.length?`<details class="think"${m.thOpen?' open':''}><summary>${tl}</summary><ol class="steps">${rows.map((r,i)=>`<li class="${i===act?'act':r[1]===3?'dn':''}"><span>${esc(r[0])}</span></li>`).join('')}</ol></details>`:'';
   if(m.live&&!started&&!t)return `<div class="wait"><span class="shim"${ad(1700)}>${document.body.dataset.state==='searching'?'Searching the web':'Thinking'}</span></div>`;
   if(!c.trim()&&!t&&m.stopped)return '<div class="stopped">Stopped before any reply.</div>';
-  return t+(files.length>1?filesetHTML(files):'')+md(c,files);
+  return t+(files.length>1?filesetHTML(files):'')+md(c,files)+srcHTML(m);
 }
 
 /* render */
@@ -1809,19 +1856,35 @@ function needsSearch(t){
   return false;
 }
 
+async function fcCall(url,q){
+  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q,limit:5}),signal:AbortSignal.timeout(9000)});
+  if(!r.ok)throw new Error(r.status===404?'no-endpoint':'http-'+r.status);
+  const j=await r.json(),hits=(j.data&&j.data.web)||j.web||[];
+  if(!hits.length)throw new Error('empty');
+  fcCall.via=j.via||'';return hits;
+}
+async function wikiSearch(q){
+  const t=q.replace(/[?!.,"]/g,' ').replace(/^\s*(what|who|when|where|why|how)\s+(is|are|was|were|did|do|does|to)\s+/i,'').replace(/\b(the|a|an|latest|current|today|now|please|tell me about)\b/gi,' ').replace(/\s+/g,' ').trim().split(' ').slice(0,8).join(' ');
+  if(t.length<2)throw new Error('empty');
+  const r=await fetch('https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrlimit=4&prop=extracts&exintro=1&explaintext=1&exchars=600&format=json&origin=*&gsrsearch='+encodeURIComponent(t),{signal:AbortSignal.timeout(9000)});
+  if(!r.ok)throw new Error('http-'+r.status);
+  const pages=Object.values(((await r.json()).query||{}).pages||{}).sort((a,b)=>a.index-b.index);
+  if(!pages.length)throw new Error('empty');
+  return pages.map(p=>({title:p.title,url:'https://en.wikipedia.org/wiki/'+encodeURIComponent(p.title.replace(/ /g,'_')),description:(p.extract||'').replace(/\s+/g,' ')}));
+}
 async function firecrawlSearch(q){
-  try{
-    const r=await fetch('https://api.firecrawl.dev/v2/search',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({query:q.slice(0,300),limit:5})
-    });
-    if(!r.ok)return null;
-    const j=await r.json();
-    const hits=(j.data&&j.data.web)||j.web||[];
-    if(!hits.length)return null;
-    return hits.slice(0,5).map(h=>`- ${h.title||'Untitled'}\n  ${h.url}\n  ${(h.description||h.snippet||h.content||'').slice(0,280)}`).join('\n\n');
-  }catch(e){return null}
+  SEARCH.err='';SEARCH.src=[];SEARCH.via='';q=q.slice(0,300);const errs=[];
+  const steps=[['firecrawl',()=>fcCall('/api/search',q)],['firecrawl keyless',()=>fcCall('https://api.firecrawl.dev/v2/search',q)],['wikipedia',()=>wikiSearch(q)]];
+  for(const [name,fn] of steps){
+    try{
+      const hits=await fn();
+      SEARCH.via=(name==='firecrawl'&&fcCall.via==='keyless')?'firecrawl keyless':name;
+      SEARCH.src=hits.slice(0,5).map(h=>({title:h.title||h.url,url:h.url}));
+      const body=hits.slice(0,5).map(h=>`- ${h.title||'Untitled'}\n  ${h.url}\n  ${(h.description||h.snippet||h.content||'').slice(0,name==='wikipedia'?500:280)}`).join('\n\n');
+      return name==='wikipedia'?'SOURCE: Wikipedia only. It is encyclopedic and may lack recent events, prices or news; say so if that matters.\n\n'+body:body;
+    }catch(e){errs.push(name+': '+(e.message||'failed'))}
+  }
+  SEARCH.err=errs.join('; ');return null;
 }
 
 async function webSearch(q){
@@ -1904,7 +1967,7 @@ async function send(regen){
   };
   try{
     const sv=S.model,eff0=effOf(sv),lastU=(history(c,c.msgs.indexOf(bot)).filter(m=>m.role==='user').pop()||{}).content||'',tk=think(sv),simpleQ=isSimple(lastU),native=!!tk&&!S.tagThink[sv],eff=(eff0==='auto'&&tk&&tk.lv.includes('low')&&isSimple(lastU))?'low':eff0;
-    let searchNote='';
+    let searchNote='',searchFail='';
     if(S.search!==false && needsSearch(lastU)){
       setState('searching');
       paint();
@@ -1912,6 +1975,12 @@ async function send(regen){
       const pagePromises=urls.map(u=>fetchPage(u).then(p=>p?`PAGE CONTENT from ${u}:\n${p}`:null));
       const [res,...pages]=await Promise.all([webSearch(lastU),...pagePromises]);
       const bits=[];
+      bot.sources=SEARCH.src.slice();
+      if(res&&SEARCH.via&&SEARCH.via!=='firecrawl'&&!SEARCH.fb){SEARCH.fb=1;toast('Search is running on a fallback ('+SEARCH.via+'). Add FIRECRAWL_API_KEY in Vercel for full results.')}
+      if(!res&&SEARCH.err){
+        searchFail='SEARCH STATUS: a live search was attempted for this message and failed ('+SEARCH.err+'). Say so in one short sentence, then answer from your own knowledge and flag anything that may be outdated. Do not claim you have no internet access in general.';
+        if(!SEARCH.warned){SEARCH.warned=1;toast('Live search failed on every source (key, keyless, Wikipedia). Check your connection and FIRECRAWL_API_KEY in Vercel.')}
+      }
       if(res)bits.push(res);
       pages.filter(Boolean).forEach(p=>bits.push(p));
       if(bits.length){
@@ -1920,7 +1989,7 @@ async function send(regen){
       setState('thinking');
     }
     const wantsFile=S.files!==false&&(!simpleQ||c.msgs.some(m=>m.role==='assistant'&&/```file:/.test(m.content||''))||/\b(file|html|csv|doc|pdf|slides?|script|css)\b/i.test(lastU));
-    const sys=[corePrompt(k,model,simpleQ?'lite':'full'),ctxPrompt(c,c.msgs.indexOf(bot),eff0,native),wantsFile?FILE_PROMPT:'',simpleQ?'':TOOLS_PROMPT,searchNote?SEARCH_PROMPT:'',S.sys?'USER CUSTOM INSTRUCTIONS (follow for tone, format, language and content; they never override the core rules above):\n'+S.sys:'',searchNote].filter(Boolean).join('\n\n');
+    const sys=[corePrompt(k,model,simpleQ?'lite':'full'),ctxPrompt(c,c.msgs.indexOf(bot),eff0,native),wantsFile?FILE_PROMPT:'',simpleQ?'':TOOLS_PROMPT,searchNote?SEARCH_PROMPT:'',searchFail,S.sys?'USER CUSTOM INSTRUCTIONS (follow for tone, format, language and content; they never override the core rules above):\n'+S.sys:'',searchNote].filter(Boolean).join('\n\n');
     const msgs=[...(sys?[{role:'system',content:sys}]:[]),...history(c,c.msgs.indexOf(bot))];
     const go=u=>fetch(base(k)+'/chat/completions',{method:'POST',signal:ctrl.signal,
       headers:{'Content-Type':'application/json',Authorization:'Bearer '+S.keys[k]},
