@@ -258,12 +258,19 @@ dialog::backdrop{background:rgba(18,15,8,.5)}
   .go{width:100%;padding:12px}
   .prov input,.dlg input,.dlg textarea,.pop input{font-size:16px}
   .uw{max-width:92%}
-  .composer{padding:4px 12px calc(10px + env(safe-area-inset-bottom))}
+  .composer{padding:6px 10px calc(8px + env(safe-area-inset-bottom))}
   main.empty{padding-bottom:calc(4vh + env(safe-area-inset-bottom))}
-  .box{border-radius:14px;padding:12px 12px 8px}
+  .box{border-radius:22px;padding:10px 12px 8px;box-shadow:0 4px 20px -8px rgba(0,0,0,.35)}
+  .box:focus-within{border-color:var(--mute)}
+  .row{margin-top:6px;gap:4px}
+  .mbtn{padding:6px 8px;max-width:55%;border-radius:999px}
+  .mbtn span{font-size:13.5px}
+  .send{width:36px;height:36px;border-radius:50%}
   .hint{display:none}
   .pop{width:100%}
   .dlg{padding:18px 16px}
+  textarea{font-size:16px;line-height:1.45;min-height:24px}
+  .editbar{padding:0 2px 8px;margin-bottom:8px;font-size:12px}
 }
 
 /* thinking effort + menus */
@@ -295,8 +302,8 @@ dialog::backdrop{background:rgba(18,15,8,.5)}
   .setup{margin-top:20px}.prov{padding:14px}
   .sugs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
   .chip{padding:11px 10px;font-size:13.5px;text-align:center;border-radius:12px}
-  .row{gap:2px}
-  .mbtn{padding:9px 8px;max-width:58%}
+  .row{gap:4px}
+  .mbtn{padding:6px 10px;max-width:55%}
   .tools button{padding:8px 11px}
   .tools{margin-top:4px}
   .msg{padding:4px 0}
