@@ -605,7 +605,7 @@ function render(){
       else{
         d.className='msg bot';
         const hasText=!m.err&&strip(m.content);
-        d.innerHTML=`<div class="av">${mascot(30)}</div><div class="body" data-i="${i}">${bodyHTML(m)}</div>${m.live?'':`<div class="tools">${hasText?`<button data-cm="${i}">Copy</button>`:''}${i===lb?'<button data-regen>Retry</button>':''}<span class="meta">${esc(m.by||'')}${m.ms?' · '+(m.ms/1000).toFixed(1)+'s':''}${m.stopped?' · stopped':''}</span></div>`}`;
+        d.innerHTML=`<div class="av">${mascot(30)}</div><div class="body" data-i="${i}">${bodyHTML(m)}</div>${m.live?'':`<div class="tools">${hasText?`<button data-cm="${i}">Copy</button>`:''}${i===lb?'<button data-regen>Retry</button>':''}${m.stopped?'<span class="meta">Stopped</span>':''}</div>`}`;
       }
       col.appendChild(d);
     });
