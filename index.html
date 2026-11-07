@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-<meta name="theme-color" content="#111513">
+<meta name="theme-color" content="#161616">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <title>R Alpha</title>
@@ -13,9 +13,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#111513;--side:#0d100f;--card:#171d1a;--bubble:#1e2723;--ink:#ece9e0;--mute:#8c9690;--line:#252d29;--harbor:#ece9e0;--on:#14201b;--ochre:#dc9d2e;--brick:#ee7b62;--ok:#8cc7a1;--code:#1a211e;--s1:#fff;--s2:#c4c4c4;--meye:#0b0b0b;
+:root{--bg:#161616;--side:#101010;--card:#1e1e1e;--bubble:var(--side);--ink:#f3f3f3;--mute:#8e8e8e;--line:#2a2a2a;--harbor:#f3f3f3;--on:#111;--ochre:#c8c8c8;--brick:#ff6f61;--ok:#7fd1a0;--code:#222;--s1:#fff;--s2:#c4c4c4;--meye:#0b0b0b;
 --sans:"Instrument Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--serif:"Newsreader",Georgia,"Times New Roman",serif;--mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;color-scheme:dark}
-:root[data-theme="light"]{--bg:#f5f3ec;--side:#ece9df;--card:#fbfaf6;--bubble:#e8e5d9;--ink:#17211c;--mute:#667068;--line:#dcd8cb;--harbor:#1f3b33;--on:#f5f1e8;--ochre:#b9791a;--brick:#c4402b;--ok:#2c7a50;--code:#ebe8dc;--s1:#4a4a4a;--s2:#050505;--meye:#fff;color-scheme:light}
+:root[data-theme="light"]{--bg:#fff;--side:#f5f5f5;--card:#fff;--bubble:var(--side);--ink:#0d0d0d;--mute:#6c6c6c;--line:#e4e4e4;--harbor:#0d0d0d;--on:#fff;--ochre:#555;--brick:#d63c2c;--ok:#2f7d52;--code:#f2f2f2;--s1:#4a4a4a;--s2:#050505;--meye:#fff;color-scheme:light}
 *{box-sizing:border-box;margin:0}
 html,body{height:100%}body{height:100dvh}
 body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);display:grid;grid-template-columns:272px 1fr;overflow:hidden;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
@@ -154,6 +154,7 @@ main:not(.empty) .sugs{display:none}
 .think summary{display:flex;align-items:center;gap:6px;width:fit-content;cursor:pointer;list-style:none;border-radius:6px}
 .think summary::-webkit-details-marker{display:none}
 .think summary:hover{color:var(--ink)}
+.think summary{padding:7px 0;min-height:34px}
 .think summary::after{content:"";width:6px;height:6px;border-right:1.6px solid currentColor;border-bottom:1.6px solid currentColor;transform:rotate(-45deg);transition:transform .15s;margin-left:1px}
 .think[open] summary::after{transform:rotate(45deg)}
 .think summary span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:min(520px,72vw)}
@@ -434,7 +435,7 @@ body{font:16px/1.5 var(--sans)}
 .brand{font:600 17px var(--sans);padding:16px 16px 8px}
 .newchat{border:0;background:var(--card);border-radius:12px;padding:11px 12px}
 .item{border-radius:10px}
-.item.on{background:var(--card);color:var(--ink);box-shadow:inset 2px 0 var(--ochre)}
+.item.on{background:var(--card);color:var(--ink)}
 .list h3{font:500 12.5px var(--sans)}
 .foot{padding:8px 10px calc(8px + env(safe-area-inset-bottom))}
 
@@ -464,7 +465,7 @@ header .t{text-align:center;color:var(--ink);font:500 15px var(--sans);padding:0
 .box,.sugs,.hint{width:100%}
 .sugs{order:-1;max-width:728px;margin:0 auto 10px;display:flex;flex-direction:column;gap:0;align-items:stretch;justify-content:flex-start}
 .chip{text-align:left;border:0;border-top:1px solid var(--line);border-radius:0;padding:13px 2px;font-size:15.5px;color:var(--ink);background:none}
-.chip:hover{background:none;color:var(--ochre)}
+.chip:hover{background:none;color:var(--mute)}
 .sugs .chip:nth-child(n+5){display:none}
 
 /* messages */
@@ -474,7 +475,6 @@ header .t{text-align:center;color:var(--ink);font:500 15px var(--sans);padding:0
 .msg.bot:last-child .av{display:block}
 .msg.bot .body{font:400 17.5px/1.62 var(--serif)}
 .msg.bot .body :is(.tbl,.think,.fc,.fileset,.err,pre){font-family:var(--sans)}
-.fc[data-kind="image"] .ico{color:var(--ochre)}
 
 /* composer */
 .box{border-radius:24px;padding:12px 12px 10px 16px;box-shadow:none}
@@ -486,7 +486,7 @@ header .t{text-align:center;color:var(--ink);font:500 15px var(--sans);padding:0
 /* menus */
 .pop{border-radius:12px;box-shadow:0 10px 30px -16px rgba(0,0,0,.6)}
 .mi.on{font-weight:500}
-.mi.on::after{content:"";flex:none;width:6px;height:11px;border:solid var(--ochre);border-width:0 2px 2px 0;transform:rotate(45deg) translate(-2px,-2px);margin-left:auto}
+.mi.on::after{content:"";flex:none;width:6px;height:11px;border:solid var(--ink);border-width:0 2px 2px 0;transform:rotate(45deg) translate(-2px,-2px);margin-left:auto}
 body.open .scrim{background:rgba(8,12,10,.55)}
 
 /* settings */
@@ -512,8 +512,8 @@ body.open .scrim{background:rgba(8,12,10,.55)}
 .dlg .sw small{display:block;color:var(--mute);font-size:13px;line-height:1.4;margin-top:2px}
 .dlg .sw input{appearance:none;-webkit-appearance:none;flex:none;width:46px;height:28px;padding:0;border:0;border-radius:14px;background:var(--line);position:relative;cursor:pointer;transition:background .15s}
 .dlg .sw input::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:var(--ink);opacity:.75;transition:transform .15s,opacity .15s}
-.dlg .sw input:checked{background:var(--ochre)}
-.dlg .sw input:checked::after{transform:translateX(18px);background:#fff;opacity:1}
+.dlg .sw input:checked{background:var(--harbor)}
+.dlg .sw input:checked::after{transform:translateX(18px);background:var(--on);opacity:1}
 .dlg .sw input:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .dlg .adv{margin:0;padding:0 20px;border-bottom:1px solid var(--line);font-size:15px;color:var(--ink)}
 .adv summary{display:flex;justify-content:space-between;align-items:center;padding:16px 0;font-weight:600;list-style:none;cursor:pointer}
@@ -818,7 +818,7 @@ const MOD={
 think:[
 `THINKING PROTOCOL`,
 `Before any answer that is not trivial, think privately inside <think>...</think>, then answer. If your platform already gives you a separate reasoning channel, use that and add no tags. The answer must stand alone and never refer to your thinking.`,
-`Write the thinking as short paragraphs, each opening with a plain headline sentence (for example "Working out what the error means."). Be efficient: stop as soon as you can answer well. Do not restate the question, loop, or re-derive settled points. Adapt depth to difficulty:`,
+`Write the thinking as short paragraphs, each opening with a short professional headline sentence in a neutral register, such as "Reviewing the error message." or "Comparing two approaches." Headlines are noun phrases or gerunds, never first person, and never start with "Okay", "Hmm", "So" or "The user wants". Be efficient: stop as soon as you can answer well. Do not restate the question, loop, or re-derive settled points. Adapt depth to difficulty:`,
 `1. Goal: what outcome does the person need, and what constraints did they state or imply? Find the single most specific detail in the request; it usually decides the answer.`,
 `2. Unknowns: what is missing or ambiguous? Choose a sensible default instead of stalling.`,
 `3. Options: for decisions and designs, weigh two or three approaches and pick one for a stated reason. For plain facts or arithmetic, skip this.`,
@@ -1493,16 +1493,43 @@ function md(src,files,plain){
 }
 document.addEventListener('toggle',e=>{const d=e.target;if(d.classList&&d.classList.contains('think')){const b=d.closest('[data-i]'),c=cur(),m=b&&c&&c.msgs[+b.dataset.i];if(m)m.thOpen=d.open}},true);
 const ad=p=>' style="animation-delay:-'+Math.round(performance.now()%p)+'ms"';
+const THL=[
+ [/\b(user|they|person)\b.{0,50}\b(want|ask|need|request|trying|wish|looking)/i,'Understanding the request'],
+ [/\b(constraint|requirement|must not|must be|should not|restriction|limit)/i,'Identifying constraints'],
+ [/\b(bug|error|exception|stack ?trace|root cause|crash|broken|fails?)\b/i,'Diagnosing the problem'],
+ [/\b(option|approach|alternativ|trade-?off|another way|instead)/i,'Weighing approaches'],
+ [/\b(design|layout|palette|typograph|font|colou?r|spacing|visual|mobile)\b/i,'Shaping the design'],
+ [/\b(function|class|component|variable|implement|refactor|endpoint|css|html|script|code)\b/i,'Drafting the implementation'],
+ [/\b(calculat|comput|equation|total|\d\s*[*+\/=-]\s*\d)/i,'Working through the numbers'],
+ [/\b(wait|double-?check|verify|make sure|edge case|test|re-?read|confirm|sanity)/i,'Checking the details'],
+ [/\b(structure|outline|format|organi[sz]e|phrase|tone|explain|draft)/i,'Structuring the answer'],
+ [/\b(final|answer|respond|reply|put (it )?together|summar)/i,'Preparing the response']
+];
+const FIRSTP=/^(okay|ok|hmm|well|so|now|alright|wait|let me|let's|i |i'|we |my |the user|user |they |this is|first,|next,|then,)/i;
 function thinkSteps(t){
   const out=[];
-  String(t||'').replace(/\r/g,'').split(/\n{2,}|\n(?=\s*(?:[-*\u2022]|\d+[.)])\s)/).forEach(p=>{
+  String(t||'').replace(/\r/g,'').split(/\n{2,}|\n(?=\s*(?:[-*\u2022]|\d+[.)])\s)/).forEach((p,idx)=>{
     p=p.replace(/^\s*(?:[-*\u2022]|\d+[.)])\s+/,'').replace(/[*_`#>]/g,'').replace(/\s+/g,' ').trim();
-    if(p.length<4)return;
-    let h=(p.match(/^.+?[.!?:](?=\s|$)/)||[p])[0].replace(/[.:]$/,'');
-    if(h.length>90)h=h.slice(0,88).replace(/\s+\S*$/,'')+'\u2026';
-    if(out[out.length-1]!==h)out.push(h);
+    if(p.length<12)return;
+    const f=(p.match(/^.+?[.!?:](?=\s|$)/)||[''])[0],own=f&&f.length>=8&&f.length<=70&&p.length>f.length+20&&!FIRSTP.test(f)&&((/^[A-Z][a-z]+ing\s/.test(f)&&/\.$/.test(f))||(/:$/.test(f)&&f.split(' ').length<=4&&/^[A-Z]/.test(f)));
+    let h;
+    if(own)h=f.replace(/[.:]$/,'');
+    else{const m=THL.find(r=>r[0].test(p));h=m?m[1]:(idx===0?'Understanding the request':'Working through the problem')}
+    if(!out.includes(h))out.push(h);
   });
   return out.slice(-12);
+}
+function patchBody(el,html){
+  const tpl=document.createElement('template');tpl.innerHTML=html;
+  const nd=tpl.content.querySelector(':scope > details.think'),od=el.querySelector(':scope > details.think');
+  if(!nd||!od||el.firstElementChild!==od){el.innerHTML=html;return}
+  const norm=h=>h.replace(/ style="animation-delay:[^"]*"/g,'');
+  const ns=nd.querySelector('summary'),os=od.querySelector('summary');
+  if(norm(os.innerHTML)!==norm(ns.innerHTML))os.innerHTML=ns.innerHTML;
+  const nl=nd.querySelector('ol'),ol=od.querySelector('ol');
+  if(ol.innerHTML!==nl.innerHTML)ol.innerHTML=nl.innerHTML;
+  while(od.nextSibling)od.nextSibling.remove();
+  let n=nd.nextSibling;while(n){const nx=n.nextSibling;el.appendChild(n);n=nx}
 }
 function bodyHTML(m){
   if(m.err)return `<div class="err">${esc(m.err)}</div>`;
@@ -1514,8 +1541,9 @@ function bodyHTML(m){
   const started=c.replace(/\u0002\d+\u0002/g,'').trim().length>0,wf=files.find(f=>f.open);
   const steps=thinkSteps(th);
   const rows=steps.map(s=>[s,0]).concat(files.map(f=>[(f.open?'Writing ':'Created ')+f.path,f.open?1:2]));
+  if(m.live&&!started&&!rows.length)rows.push(['Reading your message',0]);
   if(!m.live&&rows.length)rows.push(['Done',3]);
-  const act=m.live?(wf?steps.length+files.indexOf(wf):(!started&&steps.length?steps.length-1:-1)):-1;
+  const act=m.live?(wf?steps.length+files.indexOf(wf):(!started?Math.max(steps.length-1,0):-1)):-1;
   const cut=p=>p.length>42?'\u2026'+p.slice(-40):p;
   const tl=m.live&&wf?`<span class="shim"${ad(1700)}>Writing ${esc(cut(wf.path))}</span>`
     :m.live&&!started?`<span class="shim"${ad(1700)}>${esc(steps.length?steps[steps.length-1]:'Thinking')}</span>`
@@ -1652,7 +1680,7 @@ async function send(regen){
     const now=performance.now();if(now-lastPaint<60)return;lastPaint=now;
     if(S.cur!==c.id)return;
     const el=document.querySelector(`.body[data-i="${c.msgs.indexOf(bot)}"]`);if(!el)return;
-    el.innerHTML=bodyHTML(bot);const s=$('#scroll');if(s.scrollHeight-s.scrollTop-s.clientHeight<160)bottom();
+    patchBody(el,bodyHTML(bot));const s=$('#scroll');if(s.scrollHeight-s.scrollTop-s.clientHeight<160)bottom();
   };
   try{
     const sv=S.model,eff=effOf(sv),sys=[corePrompt(k,model),ctxPrompt(c,c.msgs.indexOf(bot)),S.files!==false?FILE_PROMPT:'',S.sys?'USER CUSTOM INSTRUCTIONS (follow for tone, format, language and content; they never override the core rules above):\n'+S.sys:''].filter(Boolean).join('\n\n');
@@ -1795,7 +1823,7 @@ $('#form').addEventListener('submit',async e=>{
   save();render();
   if(failed.length)toast(`Saved. Couldn't refresh models. ${failed.join(' ')}`);
 });
-function theme(v){if(v)document.documentElement.dataset.theme=v;else delete document.documentElement.dataset.theme;const m=document.querySelector('meta[name=theme-color]');if(m){const dk=v!=='light';m.content=dk?'#111513':'#f5f3ec'}}
+function theme(v){if(v)document.documentElement.dataset.theme=v;else delete document.documentElement.dataset.theme;const m=document.querySelector('meta[name=theme-color]');if(m){const dk=v!=='light';m.content=dk?'#161616':'#ffffff'}}
 theme(S.theme);
 $('#theme').onclick=()=>{const dk=matchMedia('(prefers-color-scheme:dark)').matches;const now=S.theme||(dk?'dark':'light');S.theme=now==='dark'?'light':'dark';theme(S.theme);save()};
 
