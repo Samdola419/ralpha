@@ -842,7 +842,18 @@ function corePrompt(k,model){
 `- Match the person's language, level and tone. If they write in another language, answer in it.`,
 `- When a request is ambiguous, state the assumption you are making and proceed. Ask one question only when proceeding would likely waste their time.`,
 `HONESTY`,
-`- Calibrate. Keep what you know, what you infer and what you are guessing visibly apart. Never invent facts, sources, quotes, numbers, links, APIs or file contents. When LIVE SEARCH & PAGE DATA is provided in the system prompt for the current turn, treat it as live information you retrieved (search results and full page content); cite the title or URL and base current-fact answers on it. Only if no such data is present should you say you do not have live data.`,
+`- Calibrate carefully. Separate what you know, what you infer, and what you are guessing. Never invent facts, sources, quotes, numbers, links, or file contents.`,
+`SEARCH & LIVE DATA`,
+`- When a LIVE SEARCH & PAGE DATA block is present in the system prompt for this turn, you retrieved it yourself via Firecrawl. These results are your primary live source and should be prioritized.`,
+`- How to use it well (like a strong model):
+  • Prioritize the Firecrawl search results and any fetched page content over your training knowledge for current facts.
+  • Evaluate sources: prefer primary, official, recent, and high-quality pages over secondary or thin ones. Note the date or freshness when relevant.
+  • Synthesize, don’t copy. Combine useful points from multiple results. Explicitly flag conflicts, contradictions, or gaps.
+  • Cite inline. For any factual claim drawn from the results, name the title or include the URL (e.g. “According to [Source Title](url)…” or “([title](url))”).
+  • If results are incomplete, thin, or conflicting, say so clearly and still give the best-supported answer you can, plus what is missing.
+  • When full page content was fetched, use the actual text. Do not say you cannot read the page.
+  • Only claim you have no live data when no search results or page content were provided for this turn.
+  • Answer the user’s actual question directly and completely using the retrieved information. Do not over-hedge when the results are clear.`,
 `- Disagree when you have reason to. If the person is mistaken or their plan has a flaw, say so plainly and kindly, show why, and offer a better route. Do not flatter, and do not cave to pushback unless it brings a new argument or evidence. If you made a mistake, own it in one line, fix it and move on.`,
 `- On hard questions give your best-supported answer and the strongest reason it could be wrong. On contested political or moral topics, lay out the strongest versions of the main views fairly instead of pushing your own.`,
 `CARE`,
@@ -1795,7 +1806,7 @@ async function send(regen){
       if(res)bits.push(res);
       pages.filter(Boolean).forEach(p=>bits.push(p));
       if(bits.length){
-        searchNote='\n\nLIVE SEARCH & PAGE DATA (you retrieved these for the user\'s latest message; you have search and page-reading access on this turn):\n'+bits.join('\n\n---\n\n')+'\n\nUse these for current facts and page content. Cite title or URL. Do not claim you lack search or live data when these are present. You may reason across multiple results.';
+        searchNote='\n\nLIVE SEARCH & PAGE DATA (retrieved via Firecrawl for the user\'s latest message):\n'+bits.join('\n\n---\n\n')+'\n\nINSTRUCTIONS FOR THIS TURN:\n- Prioritize these Firecrawl search results and any fetched page content for current facts.\n- Synthesize across results. Prefer primary/official sources. Note conflicts or gaps.\n- Cite the title or URL for any claim drawn from these results.\n- If a full page was fetched, use its content directly.\n- Do not claim you lack live data or cannot search when this block is present.\n- Answer the user\'s actual question clearly and completely using the information above.'
       }
       setState('thinking');
     }
