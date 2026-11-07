@@ -447,7 +447,7 @@ header .t{text-align:center;color:var(--ink);font:500 15px var(--sans);padding:0
 /* greeting: left aligned, one arrival */
 .hello{text-align:left;margin:0 auto 20px;animation:arrive .5s cubic-bezier(.2,.7,.2,1) both}
 .hello .mascot{margin:0 0 16px -4px}
-.hello h1{font:500 clamp(32px,7vw,44px)/1.08 var(--serif);letter-spacing:-.02em;max-width:17ch}
+.hello h1{font:500 clamp(32px,7vw,44px)/1.08 var(--serif);letter-spacing:-.02em}
 @keyframes arrive{from{opacity:0;transform:translateY(10px)}}
 @media(prefers-reduced-motion:reduce){.hello{animation:none}}
 
@@ -548,27 +548,27 @@ body.open .scrim{background:rgba(8,12,10,.55)}
 .hmodel{display:none}
 @media(max-width:760px){
   header{padding:calc(6px + env(safe-area-inset-top)) 8px 4px}
-  #title{display:none}
-  .hmodel{display:flex;flex:1;min-width:0;align-items:center;justify-content:center;gap:6px;padding:8px 10px;border-radius:12px;font:500 15px var(--sans);color:var(--ink)}
+  #title{display:block}
+  #title:empty::before{content:"R Alpha"}
+  .hmodel{display:none}
   .hmodel span{color:var(--mute);font-weight:400;max-width:46vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .hmodel svg{flex:none;color:var(--mute)}
   .hmodel:disabled{opacity:.5}
   .hmodel b{white-space:nowrap;flex:none;font-weight:600}
   .hmodel span{flex:0 1 auto;min-width:0}
   .hello{text-align:center}
-  .hello .mascot{margin:0 auto 16px;width:64px;height:67px}
-  .hello h1{font:500 29px/1.2 var(--serif);max-width:13ch;margin:0 auto;letter-spacing:-.015em}
+  .hello .mascot{margin:0 auto 22px;width:118px;height:124px}
+  .hello h1{font:500 30px/1.18 var(--serif);max-width:none;margin:0 auto;letter-spacing:-.015em;text-wrap:balance}
   main.empty .scroll{justify-content:center;padding:56px 24px 6vh}
   .setup{text-align:left}
   .composer,main.empty .composer{padding:0}
-  .sugs{order:-1;flex-direction:row;flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;gap:8px;max-width:none;margin:0;padding:0 14px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
-  .sugs::-webkit-scrollbar{display:none}
-  .sugs .chip:nth-child(n+5){display:block}
+  .sugs{order:-1;flex-direction:row;flex-wrap:wrap;justify-content:center;overflow:visible;gap:8px;max-width:none;margin:0;padding:0 14px 12px}
+  .sugs .chip:nth-child(n+5){display:none}
   .chip{flex:none;white-space:nowrap;border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-size:14px;color:var(--mute);background:transparent}
   .chip:hover{color:var(--mute)}
   .box{max-width:none;border:0;border-top:1px solid var(--line);border-radius:20px 20px 0 0;padding:14px 16px calc(10px + env(safe-area-inset-bottom));background:var(--card)}
   .box:focus-within{border-color:var(--line)}
-  #mbtn{display:none}
+  #mbtn{border:0;padding:8px;color:var(--mute);max-width:none;min-width:0;flex:0 1 auto}
   .row{margin-top:8px;gap:2px}
   .tbtn{border:0;padding:8px 10px 8px 6px;color:var(--mute);max-width:none}
   .msg.user{display:block}
@@ -755,7 +755,7 @@ document.addEventListener('pointerleave',()=>{mp=null;track()});
 function setState(s){document.body.dataset.state=s;track()}
 
 const hr=new Date().getHours(),part=hr<5?'Still up':hr<12?'Good morning':hr<18?'Good afternoon':'Good evening';
-const G=part+'. What are we working on?';
+const G=part+'.<br>What are we working on?';
 const SUGS=[
   ['Review my code','Review this code and tell me what is wrong with it:\n\n'],
   ['Explain something','Explain how server-sent events work, then show a minimal fetch example.'],
@@ -1623,7 +1623,7 @@ function render(){
   $('#title').textContent=c?c.title:'';
   const T=$('#stage');
   if(empty){
-    T.innerHTML=`<div class="hello">${mascot(72)}<h1>${any?G:'Add a key to start.'}</h1>${any?'':setup()}</div>`;
+    T.innerHTML=`<div class="hello">${mascot(120)}<h1>${any?G:'Add a key to start.'}</h1>${any?'':setup()}</div>`;
   }else{
     T.innerHTML='<div class="col"></div>';const col=T.firstChild;
     let lb=c.msgs.length-1;while(lb>=0&&c.msgs[lb].role==='note')lb--;
