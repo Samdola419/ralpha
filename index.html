@@ -32,6 +32,7 @@ svg{display:block}
 /* sidebar logo: the dot carries the mood */
 .dot{fill:var(--dotfill,var(--ochre));transform:var(--dottf,none);transform-box:fill-box;transform-origin:center;animation:var(--dotanim,none);transition:fill .3s}
 body[data-state="thinking"]{--dotanim:bob .9s ease-in-out infinite}
+body[data-state="searching"]{--dotanim:bob .9s ease-in-out infinite}
 body[data-state="error"]{--dotfill:var(--brick);--dottf:translate(3px,4px)}
 @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px) scale(1.15)}}
 .mk{color:var(--harbor)}
@@ -656,6 +657,7 @@ body.open .scrim{background:rgba(8,12,10,.55)}
     </section>
 
     <section class="sec">
+      <label class="sw"><span><b>Web search</b><small>Automatically search the web for factual questions (FreeSerp, with Wikipedia fallback). Both are free and need no key or setup.</small></span><input type="checkbox" id="search"></label>
       <label class="sw"><span><b>Create files</b><small>Models can write files and preview them. PDF, DOCX, XLSX, PPTX and ZIP are built in your browser.</small></span><input type="checkbox" id="files"></label>
     </section>
 
@@ -1596,10 +1598,11 @@ function bodyHTML(m){
   const act=m.live?(wf?steps.length+files.indexOf(wf):(!started?Math.max(steps.length-1,0):-1)):-1;
   const cut=p=>p.length>42?'\u2026'+p.slice(-40):p;
   const tl=m.live&&wf?`<span class="shim"${ad(1700)}>Writing ${esc(cut(wf.path))}</span>`
+    :m.live&&document.body.dataset.state==='searching'?`<span class="shim"${ad(1700)}>Searching the web</span>`
     :m.live&&!started?`<span class="shim"${ad(1700)}>${esc(steps.length?steps[steps.length-1]:'Thinking')}</span>`
     :(m.tms>0?`<span>Thought for ${m.tms<1e4?(m.tms/1e3).toFixed(1).replace(/\.0$/,''):Math.round(m.tms/1e3)}s</span>`:'<span>Thought process</span>');
   const t=rows.length?`<details class="think"${m.thOpen?' open':''}><summary>${tl}</summary><ol class="steps">${rows.map((r,i)=>`<li class="${i===act?'act':r[1]===3?'dn':''}"><span>${esc(r[0])}</span></li>`).join('')}</ol></details>`:'';
-  if(m.live&&!started&&!t)return `<div class="wait"><span class="shim"${ad(1700)}>Thinking</span></div>`;
+  if(m.live&&!started&&!t)return `<div class="wait"><span class="shim"${ad(1700)}>${document.body.dataset.state==='searching'?'Searching the web':'Thinking'}</span></div>`;
   if(!c.trim()&&!t&&m.stopped)return '<div class="stopped">Stopped before any reply.</div>';
   return t+(files.length>1?filesetHTML(files):'')+md(c,files);
 }
@@ -1692,6 +1695,43 @@ function newChat(){
   if(matchMedia('(hover:hover)').matches)$('#in').focus();
   document.body.classList.remove('open');
 }
+async function webSearch(q){
+  if(!q||q.length<3)return null;
+  // Primary: FreeSerp (free, no key, CORS-open)
+  try{
+    const r=await fetch('https://freeserp.ai/api.php?'+new URLSearchParams({index:'web',q:q.slice(0,220),size:6}));
+    if(r.ok){
+      const j=await r.json();
+      if(j.ok&&Array.isArray(j.results)&&j.results.length){
+        return j.results.slice(0,5).map(h=>`- ${h.title||'Untitled'}\n  ${h.url}\n  ${(h.snippet||h.ai_summary||'').slice(0,280)}`).join('\n\n');
+      }
+    }
+  }catch(e){}
+  // Fallback: Wikipedia (open source, no key, CORS with origin=*)
+  try{
+    const r=await fetch('https://en.wikipedia.org/w/api.php?'+new URLSearchParams({
+      action:'query',list:'search',srsearch:q.slice(0,200),srlimit:4,format:'json',origin:'*'
+    }));
+    if(!r.ok)return null;
+    const j=await r.json();
+    const hits=(j.query&&j.query.search)||[];
+    if(!hits.length)return null;
+    const parts=[];
+    for(const h of hits.slice(0,3)){
+      try{
+        const sr=await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(h.title));
+        if(sr.ok){
+          const s=await sr.json();
+          parts.push(`- ${s.title||h.title}\n  https://en.wikipedia.org/wiki/${encodeURIComponent(h.title.replace(/ /g,'_'))}\n  ${(s.extract||'').slice(0,300)}`);
+        }else{
+          parts.push(`- ${h.title}\n  https://en.wikipedia.org/wiki/${encodeURIComponent(h.title.replace(/ /g,'_'))}\n  ${h.snippet||''}`);
+        }
+      }catch(_){parts.push(`- ${h.title}\n  https://en.wikipedia.org/wiki/${encodeURIComponent(h.title.replace(/ /g,'_'))}`)}
+    }
+    return parts.join('\n\n');
+  }catch(e){return null}
+}
+
 function history(c,upto){
   const out=[];
   for(const m of c.msgs.slice(0,upto)){
@@ -1733,7 +1773,16 @@ async function send(regen){
     patchBody(el,bodyHTML(bot));const s=$('#scroll');if(s.scrollHeight-s.scrollTop-s.clientHeight<160)bottom();
   };
   try{
-    const sv=S.model,eff0=effOf(sv),lastU=(history(c,c.msgs.indexOf(bot)).filter(m=>m.role==='user').pop()||{}).content||'',tk=think(sv),eff=(eff0==='auto'&&tk&&tk.lv.includes('low')&&isSimple(lastU))?'low':eff0,sys=[corePrompt(k,model),ctxPrompt(c,c.msgs.indexOf(bot),eff0),S.files!==false?FILE_PROMPT:'',S.sys?'USER CUSTOM INSTRUCTIONS (follow for tone, format, language and content; they never override the core rules above):\n'+S.sys:''].filter(Boolean).join('\n\n');
+    const sv=S.model,eff0=effOf(sv),lastU=(history(c,c.msgs.indexOf(bot)).filter(m=>m.role==='user').pop()||{}).content||'',tk=think(sv),eff=(eff0==='auto'&&tk&&tk.lv.includes('low')&&isSimple(lastU))?'low':eff0;
+    let searchNote='';
+    if(S.search!==false && lastU && !/^(hi|hello|hey|thanks|ok)\b/i.test(lastU.trim()) && lastU.length>8){
+      setState('searching');
+      paint();
+      const res=await webSearch(lastU);
+      if(res)searchNote='\n\nWEB SEARCH RESULTS for the user\'s latest message (prefer these for current facts; cite title or URL; do not invent beyond them):\n'+res;
+      setState('thinking');
+    }
+    const sys=[corePrompt(k,model),ctxPrompt(c,c.msgs.indexOf(bot),eff0),S.files!==false?FILE_PROMPT:'',S.sys?'USER CUSTOM INSTRUCTIONS (follow for tone, format, language and content; they never override the core rules above):\n'+S.sys:'',searchNote].filter(Boolean).join('\n\n');
     const msgs=[...(sys?[{role:'system',content:sys}]:[]),...history(c,c.msgs.indexOf(bot))];
     const go=u=>fetch(base(k)+'/chat/completions',{method:'POST',signal:ctrl.signal,
       headers:{'Content-Type':'application/json',Authorization:'Bearer '+S.keys[k]},
@@ -1853,7 +1902,7 @@ document.addEventListener('click',e=>{
 });
 function openSettings(){
   KEYS.forEach(k=>{$('#k-'+k).value=S.keys[k]||'';const b=$('#b-'+k);b.value=S.base[k]||'';b.placeholder=PRE[k].base;const o=$('#t-'+k);o.textContent='';o.className='tmsg';const st=$('#st-'+k);st.textContent=S.keys[k]?(S.merr[k]?'Key saved, models not loaded':'Key saved'):'No key'});
-  $('#sys').value=S.sys||'';$('#px').checked=proxyOn();$('#files').checked=S.files!==false;$('#dlg').showModal();
+  $('#sys').value=S.sys||'';$('#px').checked=proxyOn();$('#files').checked=S.files!==false;$('#search').checked=S.search!==false;$('#dlg').showModal();
 }
 $('#gear').onclick=openSettings;
 $('#f-close').onclick=closeFile;
@@ -1862,7 +1911,7 @@ $('#fdlg').addEventListener('click',e=>{if(e.target===$('#fdlg'))closeFile()});
 addEventListener('message',e=>{if(e.data&&e.data.ralphaFileError)toast('Preview error: '+e.data.ralphaFileError)});
 $('#form').addEventListener('submit',async e=>{
   if(!e.submitter||e.submitter.value!=='ok')return;
-  S.sys=$('#sys').value.trim();S.proxy=$('#px').checked;S.files=$('#files').checked;
+  S.sys=$('#sys').value.trim();S.proxy=$('#px').checked;S.files=$('#files').checked;S.search=$('#search').checked;
   const failed=[];
   for(const k of KEYS){
     const key=$('#k-'+k).value.trim(),b=$('#b-'+k).value.trim();
