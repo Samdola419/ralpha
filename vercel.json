@@ -1,6 +1,0 @@
-{
-  "rewrites": [
-    { "source": "/_p/dahl/:path*", "destination": "https://inference.dahl.global/:path*" },
-    { "source": "/_p/harbor/:path*", "destination": "https://tokenharbor.ai/:path*" }
-  ]
-}
