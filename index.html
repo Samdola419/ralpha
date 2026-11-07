@@ -842,7 +842,7 @@ function corePrompt(k,model){
 `- Match the person's language, level and tone. If they write in another language, answer in it.`,
 `- When a request is ambiguous, state the assumption you are making and proceed. Ask one question only when proceeding would likely waste their time.`,
 `HONESTY`,
-`- Calibrate. Keep what you know, what you infer and what you are guessing visibly apart. Never invent facts, sources, quotes, numbers, links, APIs or file contents. You cannot browse, run code or open files unless the conversation shows you did, so never imply it.`,
+`- Calibrate. Keep what you know, what you infer and what you are guessing visibly apart. Never invent facts, sources, quotes, numbers, links, APIs or file contents. When WEB SEARCH RESULTS are provided in the system prompt for the current turn, treat them as live information you retrieved; cite the title or URL and base current-fact answers on them. Only if no search results are present should you say you do not have live data.`,
 `- Disagree when you have reason to. If the person is mistaken or their plan has a flaw, say so plainly and kindly, show why, and offer a better route. Do not flatter, and do not cave to pushback unless it brings a new argument or evidence. If you made a mistake, own it in one line, fix it and move on.`,
 `- On hard questions give your best-supported answer and the strongest reason it could be wrong. On contested political or moral topics, lay out the strongest versions of the main views fairly instead of pushing your own.`,
 `CARE`,
@@ -1697,39 +1697,51 @@ function newChat(){
 }
 async function webSearch(q){
   if(!q||q.length<3)return null;
-  // Primary: FreeSerp (free, no key, CORS-open)
-  try{
-    const r=await fetch('https://freeserp.ai/api.php?'+new URLSearchParams({index:'web',q:q.slice(0,220),size:6}));
-    if(r.ok){
+  const ctrl=new AbortController();
+  const to=setTimeout(()=>ctrl.abort(),3500);
+  const signal=ctrl.signal;
+  // Run FreeSerp and a fast Wikipedia lookup in parallel; return the first useful result
+  const freeSerp=async()=>{
+    try{
+      const r=await fetch('https://freeserp.ai/api.php?'+new URLSearchParams({index:'web',q:q.slice(0,220),size:5}),{signal});
+      if(!r.ok)return null;
       const j=await r.json();
       if(j.ok&&Array.isArray(j.results)&&j.results.length){
-        return j.results.slice(0,5).map(h=>`- ${h.title||'Untitled'}\n  ${h.url}\n  ${(h.snippet||h.ai_summary||'').slice(0,280)}`).join('\n\n');
+        return j.results.slice(0,4).map(h=>`- ${h.title||'Untitled'}\n  ${h.url}\n  ${(h.snippet||h.ai_summary||'').slice(0,240)}`).join('\n\n');
       }
-    }
-  }catch(e){}
-  // Fallback: Wikipedia (open source, no key, CORS with origin=*)
+    }catch(e){}
+    return null;
+  };
+  const wiki=async()=>{
+    try{
+      const r=await fetch('https://en.wikipedia.org/w/api.php?'+new URLSearchParams({
+        action:'query',list:'search',srsearch:q.slice(0,180),srlimit:3,format:'json',origin:'*'
+      }),{signal});
+      if(!r.ok)return null;
+      const j=await r.json();
+      const hits=(j.query&&j.query.search)||[];
+      if(!hits.length)return null;
+      const parts=await Promise.all(hits.slice(0,2).map(async h=>{
+        try{
+          const sr=await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(h.title),{signal});
+          if(sr.ok){
+            const s=await sr.json();
+            return `- ${s.title||h.title}\n  https://en.wikipedia.org/wiki/${encodeURIComponent(h.title.replace(/ /g,'_'))}\n  ${(s.extract||'').slice(0,280)}`;
+          }
+        }catch(_){}
+        return `- ${h.title}\n  https://en.wikipedia.org/wiki/${encodeURIComponent(h.title.replace(/ /g,'_'))}\n  ${(h.snippet||'').slice(0,200)}`;
+      }));
+      return parts.filter(Boolean).join('\n\n');
+    }catch(e){return null}
+  };
   try{
-    const r=await fetch('https://en.wikipedia.org/w/api.php?'+new URLSearchParams({
-      action:'query',list:'search',srsearch:q.slice(0,200),srlimit:4,format:'json',origin:'*'
-    }));
-    if(!r.ok)return null;
-    const j=await r.json();
-    const hits=(j.query&&j.query.search)||[];
-    if(!hits.length)return null;
-    const parts=[];
-    for(const h of hits.slice(0,3)){
-      try{
-        const sr=await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(h.title));
-        if(sr.ok){
-          const s=await sr.json();
-          parts.push(`- ${s.title||h.title}\n  https://en.wikipedia.org/wiki/${encodeURIComponent(h.title.replace(/ /g,'_'))}\n  ${(s.extract||'').slice(0,300)}`);
-        }else{
-          parts.push(`- ${h.title}\n  https://en.wikipedia.org/wiki/${encodeURIComponent(h.title.replace(/ /g,'_'))}\n  ${h.snippet||''}`);
-        }
-      }catch(_){parts.push(`- ${h.title}\n  https://en.wikipedia.org/wiki/${encodeURIComponent(h.title.replace(/ /g,'_'))}`)}
-    }
-    return parts.join('\n\n');
-  }catch(e){return null}
+    const [fs,wk]=await Promise.all([freeSerp(),wiki()]);
+    clearTimeout(to);
+    return fs||wk||null;
+  }catch(e){
+    clearTimeout(to);
+    return null;
+  }
 }
 
 function history(c,upto){
@@ -1779,7 +1791,7 @@ async function send(regen){
       setState('searching');
       paint();
       const res=await webSearch(lastU);
-      if(res)searchNote='\n\nWEB SEARCH RESULTS for the user\'s latest message (prefer these for current facts; cite title or URL; do not invent beyond them):\n'+res;
+      if(res)searchNote='\n\nWEB SEARCH RESULTS (you retrieved these for the user\'s latest message; you have search access on this turn):\n'+res+'\n\nUse these results for any current or factual claims. Cite the source title or URL. Do not say you lack search or live data when these results are present.';
       setState('thinking');
     }
     const sys=[corePrompt(k,model),ctxPrompt(c,c.msgs.indexOf(bot),eff0),S.files!==false?FILE_PROMPT:'',S.sys?'USER CUSTOM INSTRUCTIONS (follow for tone, format, language and content; they never override the core rules above):\n'+S.sys:'',searchNote].filter(Boolean).join('\n\n');
