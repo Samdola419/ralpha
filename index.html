@@ -843,6 +843,15 @@ function corePrompt(k,model){
 `- When a request is ambiguous, state the assumption you are making and proceed. Ask one question only when proceeding would likely waste their time.`,
 `HONESTY`,
 `- Calibrate carefully. Separate what you know, what you infer, and what you are guessing. Never invent facts, sources, quotes, numbers, links, or file contents.`,
+`AGENT TOOLS`,
+`- You can use tools across multiple steps when needed. To call a tool, reply with exactly:
+<tool>{"name": "tool_name", "args": {...}}</tool>
+- Available tools:
+  • search: {"query": "string"} — web search via Firecrawl
+  • fetch_page: {"url": "string"} — fetch and read a page
+  • run_code: {"code": "string"} — run JavaScript in a safe sandbox and get the result
+- Use tools only when they help answer the question. Do not call a tool on every message.
+- After tool results appear, continue until you can give the final answer. Do not mention the tool tags to the user.`,
 `SEARCH & LIVE DATA`,
 `- When a LIVE SEARCH & PAGE DATA block is present in the system prompt for this turn, you retrieved it yourself via Firecrawl. These results are your primary live source and should be prioritized.`,
 `- How to use it well (like a strong model):
@@ -1765,6 +1774,39 @@ function history(c,upto){
   }
   return out;
 }
+
+async function runAgentTool(name, args) {
+  if (name === "search") return (await webSearch(args.query || "")) || "No results.";
+  if (name === "fetch_page") {
+    const p = await fetchPage(args.url || "");
+    return p ? p.slice(0, 6000) : "Could not fetch page.";
+  }
+  if (name === "run_code") return await runCodeSandbox(args.code || "");
+  return "Unknown tool.";
+}
+function runCodeSandbox(code) {
+  return new Promise((resolve, reject) => {
+    const iframe = document.createElement("iframe");
+    iframe.sandbox = "allow-scripts";
+    iframe.style.display = "none";
+    document.body.appendChild(iframe);
+    const t = setTimeout(() => { iframe.remove(); reject(new Error("timeout")); }, 4000);
+    const h = (e) => {
+      if (e.source !== iframe.contentWindow) return;
+      window.removeEventListener("message", h);
+      clearTimeout(t);
+      iframe.remove();
+      if (e.data && e.data.ok) resolve(String(e.data.result));
+      else reject(new Error(e.data && e.data.error || "error"));
+    };
+    window.addEventListener("message", h);
+    iframe.srcdoc = `<!DOCTYPE html><body><script>
+      try { parent.postMessage({ok:true, result: String(eval(${JSON.stringify(code)}))}, "*"); }
+      catch(e) { parent.postMessage({ok:false, error: e.message}, "*"); }
+    <\/script></body>`;
+  });
+}
+
 async function send(regen){
   if(busy){ctrl&&ctrl.abort();return}
   if(!entries().length)return;
@@ -1845,6 +1887,53 @@ async function send(regen){
             if(r||dl.content)paint()}catch(_){}
         }
       }
+    }
+    // Agent multi-step: if the model requested a tool, run it and continue
+    let steps = 0;
+    while (steps < 4) {
+      const m = (bot.content || "").match(/<tool>([\s\S]*?)<\/tool>/);
+      if (!m) break;
+      steps++;
+      let call;
+      try { call = JSON.parse(m[1].trim()); } catch { break; }
+      if (!call || !call.name) break;
+      setState("searching");
+      paint();
+      let result = "";
+      try { result = await runAgentTool(call.name, call.args || {}); }
+      catch (e) { result = "Tool error: " + (e.message || e); }
+      bot.think = (bot.think || "") + "\n[tool " + call.name + "] " + String(result).slice(0, 400);
+      // Append tool result as a synthetic user message for the next call
+      const toolMsg = { role: "user", content: "Tool result (" + call.name + "):\n" + String(result).slice(0, 5000) };
+      c.msgs.push(toolMsg);
+      // Clear previous tool tag from content so we don't loop forever
+      bot.content = bot.content.replace(/<tool>[\s\S]*?<\/tool>/, "").trim();
+      // Re-call the model with the tool result included
+      const res2 = await go(usedEff);
+      if (!res2.ok) break;
+      if (!(res2.headers.get("content-type") || "").includes("event-stream")) {
+        const j = await res2.json(), mm = j.choices?.[0]?.message || {};
+        bot.content = mm.content || "";
+        if (mm.reasoning_content || mm.reasoning) bot.think += (mm.reasoning_content || mm.reasoning);
+      } else {
+        bot.content = "";
+        const rd = res2.body.getReader(), dec = new TextDecoder(); let buf = "";
+        for (;;) {
+          const {done, value} = await rd.read(); if (done) break;
+          buf += dec.decode(value, {stream: true});
+          const lines = buf.split("\n"); buf = lines.pop();
+          for (const l of lines) {
+            if (!l.startsWith("data:")) continue;
+            const d = l.slice(5).trim(); if (!d || d === "[DONE]") continue;
+            try {
+              const dl = JSON.parse(d).choices?.[0]?.delta || {};
+              if (dl.reasoning_content || dl.reasoning) bot.think += (dl.reasoning_content || dl.reasoning);
+              if (dl.content) bot.content += dl.content;
+            } catch {}
+          }
+        }
+      }
+      paint();
     }
     if(!bot.content.trim()&&!bot.think)throw new Error(`${PRE[k].name} returned an empty reply. The model id may be wrong or retired; pick another from the model menu.`);
     setState('idle');
