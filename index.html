@@ -543,6 +543,41 @@ body.open .scrim{background:rgba(8,12,10,.55)}
   .pop::before{width:36px;background:var(--mute);opacity:.5}
   .dlg .acts button{padding:13px}
 }
+
+/* ===== mobile: Claude-style shell in R Alpha greys ===== */
+.hmodel{display:none}
+@media(max-width:760px){
+  header{padding:calc(6px + env(safe-area-inset-top)) 8px 4px}
+  #title{display:none}
+  .hmodel{display:flex;flex:1;min-width:0;align-items:center;justify-content:center;gap:6px;padding:8px 10px;border-radius:12px;font:500 15px var(--sans);color:var(--ink)}
+  .hmodel span{color:var(--mute);font-weight:400;max-width:46vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hmodel svg{flex:none;color:var(--mute)}
+  .hmodel:disabled{opacity:.5}
+  .hmodel b{white-space:nowrap;flex:none;font-weight:600}
+  .hmodel span{flex:0 1 auto;min-width:0}
+  .hello{text-align:center}
+  .hello .mascot{margin:0 auto 16px;width:64px;height:67px}
+  .hello h1{font:500 29px/1.2 var(--serif);max-width:13ch;margin:0 auto;letter-spacing:-.015em}
+  main.empty .scroll{justify-content:center;padding:56px 24px 6vh}
+  .setup{text-align:left}
+  .composer,main.empty .composer{padding:0}
+  .sugs{order:-1;flex-direction:row;flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;gap:8px;max-width:none;margin:0;padding:0 14px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .sugs::-webkit-scrollbar{display:none}
+  .sugs .chip:nth-child(n+5){display:block}
+  .chip{flex:none;white-space:nowrap;border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-size:14px;color:var(--mute);background:transparent}
+  .chip:hover{color:var(--mute)}
+  .box{max-width:none;border:0;border-top:1px solid var(--line);border-radius:20px 20px 0 0;padding:14px 16px calc(10px + env(safe-area-inset-bottom));background:var(--card)}
+  .box:focus-within{border-color:var(--line)}
+  #mbtn{display:none}
+  .row{margin-top:8px;gap:2px}
+  .tbtn{border:0;padding:8px 10px 8px 6px;color:var(--mute);max-width:none}
+  .msg.user{display:block}
+  .uw{max-width:100%;align-items:stretch}
+  .msg.user .body{background:var(--card);border-radius:14px;padding:12px 14px}
+  :root[data-theme="light"] .msg.user .body{background:var(--side)}
+  .think summary{border:1px solid var(--line);border-radius:10px;padding:6px 10px;min-height:0}
+  .think{margin-bottom:.8em}
+}
 </style>
 </head>
 <body data-state="idle">
@@ -570,6 +605,7 @@ body.open .scrim{background:rgba(8,12,10,.55)}
   <header>
     <button class="ib" id="side" aria-label="Toggle chat list"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7h12M4 13h7"/></svg></button>
     <span class="hm" id="hm"></span>
+    <button class="hmodel" id="hmodel" aria-haspopup="listbox" aria-label="Choose model"><b>R Alpha</b><span id="hmlabel"></span><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5l3-3"/></svg></button>
     <div class="t" id="title"></div>
     <button class="ib" id="newtop" aria-label="New chat"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4H5.5A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16h9a1.5 1.5 0 0 0 1.5-1.5V10"/><path d="M14.5 3.5l2 2L10 12H8v-2z"/></svg></button>
   </header>
@@ -1604,8 +1640,8 @@ function render(){
       col.appendChild(d);
     });
   }
-  const ta=$('#in');ta.disabled=!any;ta.placeholder=any?'Message R Alpha':'Add an API key above to start chatting';
-  $('#mlabel').textContent=any?short(sp(S.model)[1]):'No model';
+  const ta=$('#in');ta.disabled=!any;ta.placeholder=any?(empty?'Chat with R Alpha':'Reply to R Alpha'):'Add an API key above to start chatting';
+  $('#mlabel').textContent=any?short(sp(S.model)[1]):'No model';$('#hmlabel').textContent=any?short(sp(S.model)[1]):'No model';$('#hmodel').disabled=!any;
   $('#mbtn').disabled=!any;const th=any&&think(S.model);$('#tbtn').hidden=!th;if(th)$('#tlabel').textContent=EFF[effOf(S.model)][0];renderList();gate();updJump();track();
 }
 const bottom=()=>{const s=$('#scroll');s.scrollTop=s.scrollHeight};
@@ -1765,6 +1801,7 @@ $('#in').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isCo
 $('#send').onclick=()=>send();
 $('#new').onclick=newChat;$('#newtop').onclick=newChat;$('#scrim').onclick=()=>document.body.classList.remove('open');$('#kbd').textContent=MAC?'\u2318 K':'Ctrl K';
 $('#mbtn').onclick=e=>{e.stopPropagation();const o=!$('#pop').hidden;closeMenu();if(!o)menu()};
+$('#hmodel').onclick=e=>{e.stopPropagation();const o=!$('#pop').hidden;closeMenu();if(!o)menu()};
 $('#tbtn').onclick=e=>{e.stopPropagation();const o=!$('#tpop').hidden;closeMenu();if(!o)tmenu()};
 $('#side').onclick=()=>{if(innerWidth<=760)document.body.classList.toggle('open');else document.body.classList.toggle('collapsed')};
 $('#jump').onclick=()=>{$('#scroll').scrollTo({top:1e9,behavior:'smooth'})};
